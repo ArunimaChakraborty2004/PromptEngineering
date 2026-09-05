@@ -32,6 +32,7 @@ export default function ModelCompare() {
       const dataA = await resA.json();
       setOutputA(dataA.content || dataA.error || 'No output');
       setLatencyA(Math.round(performance.now() - startA));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (e: any) {
       setOutputA(`Error: ${e.message}`);
     }
@@ -47,6 +48,7 @@ export default function ModelCompare() {
       const dataB = await resB.json();
       setOutputB(dataB.content || dataB.error || 'No output');
       setLatencyB(Math.round(performance.now() - startB));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (e: any) {
       setOutputB(`Error: ${e.message}`);
     } finally {

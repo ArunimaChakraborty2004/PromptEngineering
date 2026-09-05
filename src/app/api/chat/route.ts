@@ -1,40 +1,79 @@
-import { createOpenAI } from '@ai-sdk/openai';
-import { generateText } from 'ai';
+import { NextRequest } from "next/server";
+import {
+  getConversation,
+  createConversation,
+  getMessages,
+} from "@/lib/db";
+import { runAssistant } from "@/lib/orchestrator";
+import { getConfiguredModel, hasApiKey } from "@/lib/llm";
 
-// Bypass local SSL cert verification issues (corporate proxy/antivirus)
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
-const groq = createOpenAI({
-  baseURL: 'https://api.groq.com/openai/v1',
-  apiKey: process.env.GROQ_API_KEY,
-});
-
-export const maxDuration = 30;
-
-export async function POST(req: Request) {
-  try {
-    const { messages } = await req.json();
-
-    // Map messages to simple role/content format
-    const formattedMessages = messages.map((m: any) => ({
-      role: m.role,
-      content: m.content
-    }));
-
-    const { text } = await generateText({
-      model: groq('groq/compound'),
-      system: 'You are an expert Prompt Engineer assistant. Your goal is to help the user refine, test, and compare different prompt strategies.',
-      messages: formattedMessages,
-    });
-
-    return new Response(JSON.stringify({ role: 'assistant', content: text }), {
-      headers: { 'Content-Type': 'application/json' },
-    });
-  } catch (error: any) {
-    console.error('Chat API Error:', error);
-    return new Response(JSON.stringify({ error: error?.message || 'Failed to process request' }), { 
-      status: 500,
-      headers: { 'Content-Type': 'application/json' }
-    });
+// GET /api/chat?conversationId=<id>  -> conversation + messages (used by chat UI)
+export async function GET(req: NextRequest) {
+  const conversationId = req.nextUrl.searchParams.get("conversationId");
+  if (conversationId) {
+    const conv = getConversation(conversationId);
+    if (!conv) return Response.json({ error: "Conversation not found" }, { status: 404 });
+    return Response.json({ conversation: conv, messages: getMessages(conversationId) });
   }
+  return Response.json({
+    ready: true,
+    apiKeyConfigured: hasApiKey(),
+    model: getConfiguredModel(),
+  });
+}
+
+// POST /api/chat -> { message, conversationId?, model? }
+export async function POST(req: NextRequest) {
+  let body: {
+    message?: string;
+    messages?: { role: string; content: string }[];
+    conversationId?: string;
+    conversation_id?: string;
+    model?: string;
+  };
+  try {
+    body = await req.json();
+  } catch {
+    return Response.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
+
+  const conversationId = body.conversationId ?? body.conversation_id ?? undefined;
+  let userText = (body.message ?? "").trim();
+  if (!userText && body.messages && body.messages.length > 0) {
+    userText = String(body.messages[body.messages.length - 1].content ?? "").trim();
+  }
+  if (!userText) return Response.json({ error: "No user message provided" }, { status: 400 });
+
+  const modelId = body.model && body.model !== "default" ? body.model : undefined;
+
+  let convId = conversationId;
+  if (!convId) {
+    convId = createConversation(userText.slice(0, 60)).id;
+  } else if (!getConversation(convId)) {
+    return Response.json({ error: "Conversation not found" }, { status: 404 });
+  }
+
+  const result = await runAssistant(convId, userText, { model: modelId });
+
+  return Response.json({
+    conversationId: result.conversationId,
+    conversation_id: result.conversationId,
+    reply: result.reply,
+    content: result.reply,
+    model: result.model,
+    toolRounds: result.toolEvents.map((t) => ({
+      name: t.name,
+      args: JSON.stringify(t.arguments),
+      result: t.result,
+      ok: t.ok,
+    })),
+    tool_events: result.toolEvents,
+    kbUsed: result.sources.length > 0,
+    sources: result.sources,
+    fallback: result.fallback,
+  });
 }

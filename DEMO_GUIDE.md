@@ -1,31 +1,45 @@
-# Demo Guide - Prompt Engineering Platform
+# Demo Guide — Nova (Intelligent Personal Productivity & Knowledge Assistant)
 
 ## Quick Start
-1. Ensure `npm run dev` is running on `http://localhost:3000`.
-2. Open your web browser and navigate to `http://localhost:3000`.
+1. `cp .env.example .env.local` and fill in your `GROQ_API_KEY`.
+2. `npm install`
+3. `npm run dev` — open **http://localhost:3000**
 
 ## Guided Walkthrough
 
-### 1. Main Chat Workspace
-- Click on **Main Chat** in the left sidebar.
-- Type any prompt (e.g., *"Help me design a system prompt for a customer support bot"*) and click **Send** or press `Enter`.
-- Observe the real-time AI response powered by Groq's high-speed inference engine.
+### 1. Main Chat Workspace (`/`)
+- Type any prompt and press **Enter**.
+- Try the live calculator: `Compute log10(140000 * 30)` — Nova calls the
+  `calculate` tool and shows the exact result in the **Tool activity** panel.
+- Try live weather: `What's the weather in Tokyo?` — Nova calls `get_weather`.
+- Switch the **model selector** (Qwen 3.8 27B / GPT-OSS 120B / default) and
+  re-run a prompt to observe differences.
+- Ask a follow-up question — Nova remembers the conversation context.
 
-### 2. Knowledge Base
-- Click on **Knowledge Base** in the sidebar.
-- Test document management by dragging and dropping a PDF/file into the dropzone or clicking **Browse Files**.
-- See the uploaded document get indexed in real-time.
+### 2. Knowledge Base (`/knowledge`)
+- Drag-and-drop a `.txt`, `.md`, `.pdf`, `.docx`, or `.csv` file, or click
+  **browse files**.
+- Watch the document move from **Processing** to **Ready** with a chunk count.
+- Return to chat and ask `What does my document say about ...?` — Nova grounds
+  its answer in retrieved chunks and cites the source document by name.
 
 ### 3. Prompt Lab & Version Control
-- Click on **Prompt Lab**.
-- Switch between **V1 (Naive)**, **V2 (Chain-of-Thought)**, and **V3 (Role-Based)** to inspect prompt evolution.
-- Modify the system instruction in the text box and click **Run Test Output** to see live results.
+- Compare the V1 (naive direct prompt), V2 (Chain-of-Thought), and V3
+  (role-based structured) system prompts.
+- Edit the system instruction, run a test, and observe the output change.
 
 ### 4. Side-by-Side Model Comparison
-- Click on **Compare Models**.
-- Input a prompt (e.g., *"Explain quantum entanglement to a 10 year old"*).
-- Click **Execute Comparison** to compare outputs and latency between models.
+- Enter a prompt and execute the comparison to view outputs and latency for
+  two different models.
 
-### 5. Analytics & Responsible AI
-- Navigate to **Evaluations** to review latency metrics and heuristic scores.
-- Navigate to **Responsible AI** to review prompt injection defenses and security guardrails.
+### 5. Evaluations & Analytics
+- The Evaluations dashboard reports heuristic scores, latency, and pass rates
+  (backed by `/api/evaluations`).
+
+### 6. Responsible AI
+- Review the documented guardrails: prompt-injection defense, PII
+  anonymization, hallucination grounding, and model limitations.
+
+## Fallback Mode
+Without a `GROQ_API_KEY`, Nova still runs: it responds in a helpful offline
+mode and tells you exactly which environment variable to set.

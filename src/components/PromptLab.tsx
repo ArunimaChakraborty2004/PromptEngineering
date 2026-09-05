@@ -57,6 +57,7 @@ export default function PromptLab() {
       });
       const data = await res.json();
       setTestOutput(data.content || data.error || 'No response returned.');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (e: any) {
       setTestOutput(`Error: ${e.message}`);
     } finally {
