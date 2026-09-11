@@ -271,6 +271,15 @@ export default function NovaChat() {
               </svg>
               Knowledge Base
             </a>
+            <a
+              href="/compare"
+              className="mb-2 flex items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-xs font-medium text-zinc-300 transition hover:border-violet-500 hover:text-violet-300"
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
+              </svg>
+              Model Comparison
+            </a>
             <p className="font-medium text-zinc-500">Capabilities</p>
             <ul className="mt-1 space-y-0.5">
               <li>{"\u2022"} Live tools: Weather, Calculator</li>
