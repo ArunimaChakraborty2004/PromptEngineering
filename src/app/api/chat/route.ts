@@ -57,23 +57,33 @@ export async function POST(req: NextRequest) {
     return Response.json({ error: "Conversation not found" }, { status: 404 });
   }
 
-  const result = await runAssistant(convId, userText, { model: modelId });
+  try {
+    const result = await runAssistant(convId, userText, { model: modelId });
 
-  return Response.json({
-    conversationId: result.conversationId,
-    conversation_id: result.conversationId,
-    reply: result.reply,
-    content: result.reply,
-    model: result.model,
-    toolRounds: result.toolEvents.map((t) => ({
-      name: t.name,
-      args: JSON.stringify(t.arguments),
-      result: t.result,
-      ok: t.ok,
-    })),
-    tool_events: result.toolEvents,
-    kbUsed: result.sources.length > 0,
-    sources: result.sources,
-    fallback: result.fallback,
-  });
+    return Response.json({
+      conversationId: result.conversationId,
+      conversation_id: result.conversationId,
+      reply: result.reply,
+      content: result.reply,
+      model: result.model,
+      toolRounds: result.toolEvents.map((t) => ({
+        name: t.name,
+        args: JSON.stringify(t.arguments),
+        result: t.result,
+        ok: t.ok,
+      })),
+      tool_events: result.toolEvents,
+      kbUsed: result.sources.length > 0,
+      sources: result.sources,
+      fallback: result.fallback,
+    });
+  } catch (error) {
+    // Always return JSON so the client can parse it (avoids
+    // "unexpected end of JSON input" from HTML 500 pages).
+    const msg = (error as Error).message ?? "Unknown error";
+    return Response.json(
+      { error: msg, reply: `Sorry, something went wrong: ${msg}` },
+      { status: 500 }
+    );
+  }
 }

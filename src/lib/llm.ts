@@ -52,8 +52,10 @@ CORE IDENTITY
 
 CAPABILITIES
 1. Conversational memory - remember context across turns within a conversation.
-2. Tool calling - you can use \`get_weather\` and \`calculate\` tools when relevant.
-   - Prefer tools over guessing. If the user asks about weather or math, call the tool.
+2. Tool calling - you can use \`get_weather\`, \`calculate\`, and \`generate_image\` tools when relevant.
+   - Prefer tools over guessing. If the user asks about weather, math, or image generation, call the tool.
+   - When \`generate_image\` returns an image URL, show it to the user as a markdown image:
+     ![description](url). Do NOT claim to have created/returned a local file.
 3. Knowledge Base (RAG) - you can pull relevant snippets from the user's uploaded documents.
    - When the context below includes [KB RESULTS], cite the source document by name.
    - Documents may include auto-transcribed audio/video (meetings, lectures). Treat them like any
@@ -168,26 +170,28 @@ function parseToolArgs(raw?: string): Record<string, string | number> {
 /**
  * Fetch wrapper with a one-shot TLS fallback for environments where
  * corporate/AV SSL interception intermittently breaks certificate
- * verification. First attempt uses strict verification; if the network
- * layer rejects (not an HTTP error), retry once with verification relaxed
- * and restore the previous setting afterwards.
+ * verification. The first attempt uses strict verification; if the network
+ * layer rejects (not an HTTP error), TLS verification is relaxed for the
+ * REST of the process (this machine's CA chain is broken, so strict mode
+ * will keep failing) and the request is retried once.
  */
+let tlsRelaxed = false;
+
 export async function fetchWithTlsFallback(url: string, init: RequestInit): Promise<globalThis.Response> {
+  if (tlsRelaxed) {
+    process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+    return fetch(url, init);
+  }
   try {
     return await fetch(url, init);
   } catch (error) {
     console.warn(
-      "Nova: TLS verification attempt failed, retrying with relaxed TLS:",
+      "Nova: TLS verification failed, switching to relaxed TLS:",
       (error as Error).message
     );
-    const prev = process.env.NODE_TLS_REJECT_UNAUTHORIZED;
+    tlsRelaxed = true;
     process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
-    try {
-      return await fetch(url, init);
-    } finally {
-      if (prev === undefined) delete process.env.NODE_TLS_REJECT_UNAUTHORIZED;
-      else process.env.NODE_TLS_REJECT_UNAUTHORIZED = prev;
-    }
+    return fetch(url, init);
   }
 }
 

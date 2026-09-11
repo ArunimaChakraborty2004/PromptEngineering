@@ -3,7 +3,7 @@
 Nova is a productivity and knowledge AI assistant built with **Next.js 16 (App Router)**, **Tailwind CSS v4**, **SQLite**, and the **Groq API**. It goes beyond a basic chatbot by combining:
 
 - **Conversational memory** — full chat history is persisted locally per conversation.
-- **Live tool calling** — real-time **weather** (Open-Meteo / wttr.in / OpenWeather) and a safe **calculator**.
+- **Live tool calling** — real-time **weather** (Open-Meteo / wttr.in / OpenWeather), a safe **calculator**, and **image generation** (Pollinations.ai, keyless).
 - **Knowledge Base (RAG)** — upload `.txt`, `.md`, `.pdf`, `.docx`, `.csv` documents; they are parsed, chunked, and indexed locally with TF-IDF embeddings, then retrieved to ground answers.
 - **Audio/Video transcription** — upload a recording (MP3/WAV/M4A/OGG/FLAC/MP4/MOV/…) in the Knowledge Base; Whisper transcribes it and the transcript is added to the RAG index so Nova can answer questions about your meetings/lectures.
 - **Model selector** — switch between Groq models (Qwen, GPT-OSS, default).
@@ -41,6 +41,7 @@ See [`.env.example`](.env.example). The only required variable is `GROQ_API_KEY`
 
 - "What's the weather in Tokyo?" → `get_weather` tool is invoked.
 - "Compute log10(140000 * 30)" → `calculate` tool returns the exact value.
+- "Generate an image of a mountain landscape at sunrise" → `generate_image` tool returns an AI image that renders right in the chat (keyless, via Pollinations.ai).
 - Upload a PDF in the **Knowledge Base**, then ask "What does the document say about X?" → TM-retrieved chunks ground the answer, with source citations.
 - Upload an MP3/MP4 recording in the Knowledge Base → it's transcribed, added to the index, then ask "What did the meeting decide?" → Nova answers from the transcript.
 

@@ -55,7 +55,35 @@ export const CALCULATOR_TOOL: ToolDefinition = {
   },
 };
 
-export const ALL_TOOLS: ToolDefinition[] = [WEATHER_TOOL, CALCULATOR_TOOL];
+export const IMAGE_TOOL: ToolDefinition = {
+  type: "function",
+  function: {
+    name: "generate_image",
+    description:
+      "Generate an AI image from a text description. Use this whenever the user asks to create, draw, or generate an image/picture/illustration/logo/etc. Returns a public image URL the user can open (and that renders in chat).",
+    parameters: {
+      type: "object",
+      properties: {
+        prompt: {
+          type: "string",
+          description:
+            "Detailed English description of the image to generate, e.g. 'A futuristic city skyline at sunset, purple and blue neon lights, digital art'",
+        },
+        width: {
+          type: "number",
+          description: "Image width in pixels (default 512, max 1024)",
+        },
+        height: {
+          type: "number",
+          description: "Image height in pixels (default 512, max 1024)",
+        },
+      },
+      required: ["prompt"],
+    },
+  },
+};
+
+export const ALL_TOOLS: ToolDefinition[] = [WEATHER_TOOL, CALCULATOR_TOOL, IMAGE_TOOL];
 
 export type ToolResult = { ok: boolean; result: string };
 
@@ -105,6 +133,8 @@ export async function runTool(
       return getWeather(args.city as string, (args.units as string) || "metric");
     case "calculate":
       return calculate(args.expression as string);
+    case "generate_image":
+      return generateImage(args.prompt as string, Number(args.width) || 512, Number(args.height) || 512);
     default:
       return { ok: false, result: `Unknown tool: ${name}` };
   }
@@ -191,4 +221,19 @@ function calculate(expression: string): ToolResult {
   } catch (error) {
     return { ok: false, result: `Calculation failed: ${(error as Error).message}` };
   }
+}
+
+async function generateImage(
+  prompt: string,
+  width: number,
+  height: number
+): Promise<ToolResult> {
+  if (!prompt || typeof prompt !== "string" || prompt.trim().length === 0) {
+    return { ok: false, result: "No image prompt provided." };
+  }
+  const w = Math.min(1024, Math.max(128, Math.round(width) || 512));
+  const h = Math.min(1024, Math.max(128, Math.round(height) || 512));
+  // Pollinations.ai is a free, keyless text-to-image API.
+  const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=${w}&height=${h}&nologo=true&seed=${Math.floor(Math.random() * 10000)}`;
+  return { ok: true, result: url };
 }
