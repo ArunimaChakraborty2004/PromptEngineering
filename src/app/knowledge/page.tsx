@@ -28,6 +28,12 @@ export default function KnowledgeBasePage() {
   const [dragOver, setDragOver] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
 
+  const [transcribing, setTranscribing] = useState(false);
+  const [transcribeStatus, setTranscribeStatus] = useState<string | null>(null);
+  const [transcript, setTranscript] = useState<string | null>(null);
+  const [transcriptDocId, setTranscriptDocId] = useState<string | null>(null);
+  const [autoAddKb, setAutoAddKb] = useState(true);
+
   const refresh = useCallback(async () => {
     const res = await fetch("/api/documents");
     const data = await res.json();
@@ -73,6 +79,35 @@ export default function KnowledgeBasePage() {
   async function removeDoc(id: string) {
     await fetch(`/api/documents?id=${id}`, { method: "DELETE" });
     refresh();
+  }
+
+  async function transcribeFile(file: File) {
+    setTranscribing(true);
+    setTranscribeStatus(null);
+    setTranscript(null);
+    setTranscriptDocId(null);
+    const form = new FormData();
+    form.append("file", file);
+    form.append("addToKnowledgeBase", String(autoAddKb));
+    try {
+      const res = await fetch("/api/transcribe", { method: "POST", body: form });
+      const data = await res.json();
+      if (!res.ok) {
+        setTranscribeStatus(`Failed: ${data.error ?? "Transcription error"}`);
+      } else {
+        setTranscript(data.text ?? "");
+        setTranscriptDocId(data.documentId ?? null);
+        setTranscribeStatus(
+          data.warning ??
+            `Transcribed "${file.name}"${data.addedToKnowledgeBase ? ` \u2014 added to Knowledge Base (${data.chunkCount} chunks)` : ""}.`
+        );
+        if (data.documentId) setTimeout(refresh, 1200);
+      }
+    } catch (e) {
+      setTranscribeStatus(`Transcription failed: ${(e as Error).message}`);
+    } finally {
+      setTranscribing(false);
+    }
   }
 
   const readyCount = docs.filter((d) => d.status === "ready").length;
@@ -139,6 +174,85 @@ export default function KnowledgeBasePage() {
             {status}
           </div>
         )}
+
+        {/* Audio / Video transcription */}
+        <section className="mt-8 rounded-2xl border border-zinc-800 bg-zinc-900/60 p-6">
+          <h2 className="text-lg font-semibold">Transcribe audio / video</h2>
+          <p className="mt-1 text-sm text-zinc-500">
+            Upload a recording (MP3, WAV, M4A, OGG, FLAC, MP4, MOV\u2026). Nova
+            extracts the audio and transcribes it with Whisper — optionally
+            adds the transcript to the Knowledge Base so you can ask questions
+            about it in chat.
+          </p>
+
+          <div className="mt-4 flex flex-wrap items-center gap-4">
+            <label className="cursor-pointer rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-violet-500">
+              {transcribing ? "Transcribing\u2026" : "Choose audio or video"}
+              <input
+                type="file"
+                accept="audio/*,video/*"
+                className="hidden"
+                disabled={transcribing}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    if (file.size > 25 * 1024 * 1024) {
+                      setTranscribeStatus("File too large — Groq Whisper accepts files up to 25 MB.");
+                    } else {
+                      transcribeFile(file);
+                    }
+                  }
+                  e.currentTarget.value = "";
+                }}
+              />
+            </label>
+
+            <label className="flex cursor-pointer items-center gap-2 text-sm text-zinc-400">
+              <input
+                type="checkbox"
+                checked={autoAddKb}
+                onChange={(e) => setAutoAddKb(e.target.checked)}
+                className="accent-violet-500"
+              />
+              Add transcript to Knowledge Base
+            </label>
+          </div>
+
+          <p className="mt-3 text-xs text-zinc-600">
+            Max 25 MB per file. The transcript is deleted from disk after
+            processing — only the text (and optional KB chunks) is saved.
+          </p>
+
+          {transcribeStatus && (
+            <div className="mt-4 rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-sm text-zinc-300">
+              {transcribeStatus}
+            </div>
+          )}
+
+          {transcript && (
+            <div className="mt-4">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium text-emerald-400">
+                  Transcript
+                  {transcriptDocId && (
+                    <span className="ml-2 text-zinc-500">
+                      \u00b7 added to Knowledge Base (ask about it in chat)
+                    </span>
+                  )}
+                </p>
+                <button
+                  onClick={() => navigator.clipboard?.writeText(transcript)}
+                  className="text-xs text-zinc-500 transition hover:text-violet-400"
+                >
+                  Copy
+                </button>
+              </div>
+              <pre className="mt-2 max-h-96 overflow-y-auto whitespace-pre-wrap rounded-xl border border-zinc-800 bg-zinc-950 p-4 text-sm leading-relaxed text-zinc-300">
+                {transcript}
+              </pre>
+            </div>
+          )}
+        </section>
 
         {/* Stats */}
         <div className="mt-6 grid grid-cols-3 gap-4">

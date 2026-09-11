@@ -46,5 +46,15 @@ Chat UI (/)
 - `calculate`: whitelisted expression evaluator (no `eval` of user strings).
 - Models must support tool calling; `groq/compound` does not (see README).
 
+## Audio/Video Transcription (Multimodal)
+```
+Recording upload (Knowledge Base /api/transcribe)
+  → ffmpeg (ffmpeg-static) extracts audio track if video, normalizes to 16kHz mono mp3
+  → Groq Whisper speech-to-text (whisper-large-v3-turbo)
+  → transcript text returned to UI (copy/view)
+  → optionally saved as a .txt doc through the RAG ingestion pipeline
+  → Nova can then answer questions about the recording (RAG)
+```
+
 ## Fallback
 - No `GROQ_API_KEY` → Nova returns a helpful offline-mode reply instead of crashing.

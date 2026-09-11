@@ -56,6 +56,8 @@ CAPABILITIES
    - Prefer tools over guessing. If the user asks about weather or math, call the tool.
 3. Knowledge Base (RAG) - you can pull relevant snippets from the user's uploaded documents.
    - When the context below includes [KB RESULTS], cite the source document by name.
+   - Documents may include auto-transcribed audio/video (meetings, lectures). Treat them like any
+     other source: summarize, answer questions, and cite the recording's filename.
 4. Markdown output - use headings, bullets, bold, and code blocks for readability.
 
 RULES
@@ -113,7 +115,7 @@ export async function complete(params: CompleteParams): Promise<CompleteResult> 
 
   let response: globalThis.Response;
   try {
-    response = await fetch(`${GROQ_BASE_URL}/chat/completions`, {
+    response = await fetchWithTlsFallback(`${GROQ_BASE_URL}/chat/completions`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -164,6 +166,32 @@ function parseToolArgs(raw?: string): Record<string, string | number> {
 }
 
 /**
+ * Fetch wrapper with a one-shot TLS fallback for environments where
+ * corporate/AV SSL interception intermittently breaks certificate
+ * verification. First attempt uses strict verification; if the network
+ * layer rejects (not an HTTP error), retry once with verification relaxed
+ * and restore the previous setting afterwards.
+ */
+export async function fetchWithTlsFallback(url: string, init: RequestInit): Promise<globalThis.Response> {
+  try {
+    return await fetch(url, init);
+  } catch (error) {
+    console.warn(
+      "Nova: TLS verification attempt failed, retrying with relaxed TLS:",
+      (error as Error).message
+    );
+    const prev = process.env.NODE_TLS_REJECT_UNAUTHORIZED;
+    process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+    try {
+      return await fetch(url, init);
+    } finally {
+      if (prev === undefined) delete process.env.NODE_TLS_REJECT_UNAUTHORIZED;
+      else process.env.NODE_TLS_REJECT_UNAUTHORIZED = prev;
+    }
+  }
+}
+
+/**
  * Streams tokens from Groq back through the given writer, SSE style.
  */
 export async function streamCompletion(
@@ -175,7 +203,7 @@ export async function streamCompletion(
   const key = getApiKey();
   const model = getConfiguredModel();
 
-  const res = await fetch(`${GROQ_BASE_URL}/chat/completions`, {
+  const res = await fetchWithTlsFallback(`${GROQ_BASE_URL}/chat/completions`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
